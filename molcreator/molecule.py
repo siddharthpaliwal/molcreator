@@ -30,9 +30,10 @@ class Molecule:
 
     def __init__(self, name: str, natoms: int):
         """
-
-        :type name: string
-        :type natoms: integer
+        Initialize a molecule instance
+        Args:
+            name: 3 letter name of the molecule
+            natoms: NO. of atoms in the molecule
         """
         self.name = name
         self.natoms = natoms
@@ -47,9 +48,10 @@ class Molecule:
         self.gen_bonds()
 
     def gen_coords(self):
-        """
-        Generate the coordinates of atoms in the molecule
-        :return:
+        """Generate the coordinates of atoms in the molecule
+
+        Returns:
+            None
         """
         bondlength = Trappe['bondlength']
         bondangle = Trappe['angles']['backbone']['theta0'] * pi / 180.
@@ -75,8 +77,8 @@ class Molecule:
         self.type.append('CH3')
 
     def gen_bonds(self):
-        """
-        Assign the bonds and bond-type to the molecule
+        """Assign the bonds and bond-type to the molecule
+
         """
         for atomi, atomj in zip(range(1,self.natoms-1), range(2,self.natoms)):
             self.bond.append(('sat', atomi, atomj))

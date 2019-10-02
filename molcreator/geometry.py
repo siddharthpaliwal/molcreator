@@ -12,18 +12,29 @@ class Geometry:
     def __init__(self,
                  origin: (float, float, float) = (0.0, 0.0, 0.0),
                  boxlen: (float, float, float) = (1.0, 1.0, 1.0)):
-        """
-        Initialize a geometric manifold at specified origin
-        :param origin: Origin of the geometric manifold, default (0, 0, 0)
-        :param box: Box length in each dimension, default (1.0, 1.0, 1.0)
+        """Initialize a geometric manifold at specified origin
+
+        Args:
+            origin: Origin of the geometric manifold, default (0, 0, 0)
+            boxlen: Box length in each dimension, default (1.0, 1.0, 1.0)
         """
         self.origin = origin
         self.boxlen = boxlen
 
 
 class Planar(Geometry):
-    """
-    Define a planar manifold
+    """Define a planar manifold
+
+    Args:
+        npts: No. of seed points
+        origin: Box origin
+        boxlen: Boxlength in each dim. default:(1.0, 1.0, 1.0)
+        normal (float, float, float): Vector normal to the planar manifold
+
+    Attributes:
+        origin: Box origin
+        boxlen: Boxlength in each dim. default:(1.0, 1.0, 1.0)
+        normal: Vector normal to the planar manifold
     """
 
     def __init__(self,
@@ -31,12 +42,13 @@ class Planar(Geometry):
                  origin: (float, float, float) = (0.0, 0.0, 0.0),
                  boxlen: (float, float, float) = (1.0, 1.0, 1.0),
                  normal: (float, float, float) = (0.0, 0.0, 1.0)):
-        """
-        Define a planar manifold containing npts points
-        :param npts: No. of seed points
-        :param origin: Box origin
-        :param boxlen: Boxlength in each dim. default:(1.0, 1.0, 1.0)
-        :param normal: Vector normal to the planar manifold
+        """Define a planar manifold containing npts points
+
+        Args:
+            npts: No. of seed points
+            origin: Box origin
+            boxlen: Boxlength in each dim. default:(1.0, 1.0, 1.0)
+            normal (float, float, float): Vector normal to the planar manifold
         """
         super().__init__(origin, boxlen)
         self.boxlen[2] = 0.0  # make z dim = 0
@@ -45,8 +57,10 @@ class Planar(Geometry):
         # self.seeds = [[0.0, 0.0] for _ in range(npts)]
 
     def generate_seeds(self, tol=1.0):
-        """
-        Generate seed points on the manifold atleast 'tol' distance apart
+        """Generate seed points on the manifold atleast 'tol' distance apart
+
+        Args:
+            tol: Min. distance between any two seeds
         """
         _nassigned = 1  # assigned seeds
         self.seeds[0] = np.random.rand(3) * self.boxlen
