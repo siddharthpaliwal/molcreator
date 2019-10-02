@@ -1,4 +1,3 @@
-from molecule import Molecule
 import numpy as np
 import scipy.spatial.distance as spdist
 import time

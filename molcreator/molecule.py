@@ -4,10 +4,8 @@ The attributes are defined to correspond to a United Atom force field model
 for a linear chain alkane.
 """
 
-import os, sys
-from typing import List
 import numpy as np
-from trappe import Trappe
+from molcreator.trappe import Trappe
 from math import sin, cos, pi
 from scipy.spatial.transform import Rotation
 

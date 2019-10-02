@@ -1,5 +1,5 @@
 import unittest
-from geometry import Geometry, Planar
+from molcreator.geometry import Planar
 import numpy as np
 
 class TestGeometry(unittest.TestCase):

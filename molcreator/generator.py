@@ -3,8 +3,7 @@ Calls the writer modules to
 generate the coordinates and write a LAMMPS input file
 """
 
-from system import System, write_settings
-from geometry import Planar
+from molcreator.system import System, write_settings
 
 if __name__ == '__main__':
     path = './test_output/'

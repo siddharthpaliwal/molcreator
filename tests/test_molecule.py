@@ -1,5 +1,5 @@
 import unittest
-from molecule import Molecule
+from molcreator.molecule import Molecule
 
 
 class TestMolecule(unittest.TestCase):

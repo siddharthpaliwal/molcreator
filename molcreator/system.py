@@ -2,9 +2,9 @@
 Contains the main system definitions
 """
 import os
-from molecule import Molecule
-from geometry import Planar
-from trappe import Trappe
+from molcreator.molecule import Molecule
+from molcreator.geometry import Planar
+from molcreator.trappe import Trappe
 
 
 def write_settings(path: str) -> object:
