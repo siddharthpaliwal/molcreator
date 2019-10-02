@@ -22,8 +22,18 @@ class Geometry:
 
 
 class Planar(Geometry):
-    """
-    Define a planar manifold
+    """Define a planar manifold
+
+    Args:
+        npts: No. of seed points
+        origin: Box origin
+        boxlen: Boxlength in each dim. default:(1.0, 1.0, 1.0)
+        normal (float, float, float): Vector normal to the planar manifold
+
+    Attributes:
+        origin: Box origin
+        boxlen: Boxlength in each dim. default:(1.0, 1.0, 1.0)
+        normal: Vector normal to the planar manifold
     """
 
     def __init__(self,
@@ -31,12 +41,13 @@ class Planar(Geometry):
                  origin: (float, float, float) = (0.0, 0.0, 0.0),
                  boxlen: (float, float, float) = (1.0, 1.0, 1.0),
                  normal: (float, float, float) = (0.0, 0.0, 1.0)):
-        """
-        Define a planar manifold containing npts points
-        :param npts: No. of seed points
-        :param origin: Box origin
-        :param boxlen: Boxlength in each dim. default:(1.0, 1.0, 1.0)
-        :param normal: Vector normal to the planar manifold
+        """Define a planar manifold containing npts points
+
+        Args:
+            npts: No. of seed points
+            origin: Box origin
+            boxlen: Boxlength in each dim. default:(1.0, 1.0, 1.0)
+            normal (float, float, float): Vector normal to the planar manifold
         """
         super().__init__(origin, boxlen)
         self.boxlen[2] = 0.0  # make z dim = 0

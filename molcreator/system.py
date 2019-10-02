@@ -2,17 +2,20 @@
 Contains the main system definitions
 """
 import os
+from typing import List
 from molcreator.molecule import Molecule
 from molcreator.geometry import Planar
 from molcreator.trappe import Trappe
 
 
 def write_settings(path: str) -> object:
-    """
-    Write the force-field settings to LAMMPS input file
-    :type path: String
-    :rtype: object
-    :param path: Path to the directory where the file should be placed
+    """Write the force-field settings to LAMMPS input file
+
+    Args:
+        path: Path to the directory where the file should be placed
+
+    Returns:
+        None
     """
     folder = os.path.abspath(path)
     with open(folder + '/system.in.settings', 'w') as f:
@@ -50,9 +53,9 @@ class System(object):
                  origin=(0.0, 0.0, 1.0),
                  normal=(0.0, 0.0, 1.0),
                  geom_type='planar'):
-        """
-        Create a system with particles allocated on the manifold
+        """Create a system with particles allocated on the manifold
         and default attributes for LAMMPS
+
         Args:
             nmol: No. of molecules
             origin: Box origin
@@ -86,11 +89,14 @@ class System(object):
         self.atoms = self.nmol * self.natompermol
 
     def gen_manifold(self, type, normal):
-        """
-        Generate the manifold and seeds
-        :param type: Type of manifold ('planar' or 'sphere')
-        :param normal: Direction of normal (in case of 'planar')
-        :return:
+        """Generate the manifold and seeds
+
+        Args:
+            type: Type of manifold ('planar' or 'sphere')
+            normal: Direction of normal (in case of 'planar')
+
+        Returns:
+            None
         """
         geometry = None
         if type == 'planar':
@@ -101,12 +107,15 @@ class System(object):
             print("Done")
         return geometry
 
-    def gen_molecules(self, moltype, natompermol) -> list:
-        """
-        Generate 'nmol' molecules in the system and give them correct coordinates
-        :param moltype: String defining the type of linear alkane molecule
-        :param natompermol: No. of atoms per molecule
-        :return: List: list of generated molecules
+    def gen_molecules(self, moltype, natompermol) -> List:
+        """Generate 'nmol' molecules in the system and give them correct coordinates
+
+        Args:
+            moltype: String defining the type of linear alkane molecule
+            natompermol: No. of atoms per molecule
+
+        Returns:
+            list of generated molecules
         """
         molecules = [Molecule(moltype, natompermol) for _ in range(self.nmol)]
         if self.geometry is not None:
@@ -126,12 +135,14 @@ class System(object):
             #     molecules[i].set_base_coords(rtest)
         return molecules
 
-    def write_coords_lmp(self, path: str) -> object:
-        """
-        Write the generated atom coordinates to a LAMMPS data file
-        :type path: String
-        :rtype: object
-        :param path: Path to the directory where the file should be placed
+    def write_coords_lmp(self, path: str) -> None:
+        """Write the generated atom coordinates to a LAMMPS data file
+
+        Args:
+            path: Path to the directory where the file should be placed
+
+        Returns:
+            None
         """
         folder = os.path.abspath(path)
         with open(folder + '/system.data', 'w') as f:
