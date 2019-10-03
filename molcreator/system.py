@@ -2,6 +2,7 @@
 Contains the main system definitions
 """
 import os
+import copy
 from typing import List
 from molcreator.molecule import Molecule
 from molcreator.geometry import Planar
@@ -19,23 +20,21 @@ def write_settings(path: str) -> object:
     """
     folder = os.path.abspath(path)
     with open(folder + '/system.in.settings', 'w') as f:
-        f.write("""
-pair_coeff 1 1 lj/charmm/coul/charmm 0.091411522 3.95
-pair_coeff 2 2 lj/charmm/coul/charmm 0.194746286 3.75
-pair_coeff 3 3 lj/charmm/coul/charmm 0.294106636 3.73
-bond_coeff     1    harmonic   120.0   1.54
-angle_coeff    1    harmonic   62.0022 114 
-dihedral_coeff 1 opls 1.411036 -0.271016 3.145034 0.0 
-group TraPPE type 1 2 3 
-
-pair_coeff 4 4 lj/charmm/coul/charmm 0.4610313512 3.62
-pair_coeff 5 5 lj/charmm/coul/charmm 0.0 0.0 
-bond_coeff     2   harmonic   120.0   1.82
-bond_coeff     3    harmonic   120.0   1.34
-angle_coeff    2        harmonic   62.0022 114.0
-angle_coeff    3        harmonic   33.6135 96.0
-dihedral_coeff 2 opls -0.20686795 0.0733675754 1.2175996962 0.0    
-                """)
+        f.write("")
+        f.write("pair_coeff 1 1 lj/charmm/coul/charmm 0.091411522 3.95\n")
+        f.write("pair_coeff 2 2 lj/charmm/coul/charmm 0.194746286 3.75\n")
+        f.write("pair_coeff 3 3 lj/charmm/coul/charmm 0.294106636 3.73\n")
+        f.write("bond_coeff     1    harmonic   120.0   1.54\n")
+        f.write("angle_coeff    1    harmonic   62.0022 114\n")
+        f.write("dihedral_coeff 1 opls 1.411036 -0.271016 3.145034 0.0 \n")
+        f.write("group TraPPE type 1 2 3 \n")
+        f.write("pair_coeff 4 4 lj/charmm/coul/charmm 0.4610313512 3.62\n")
+        f.write("pair_coeff 5 5 lj/charmm/coul/charmm 0.0 0.0 \n")
+        f.write("bond_coeff     2   harmonic   120.0   1.82\n")
+        f.write("bond_coeff     3    harmonic   120.0   1.34\n")
+        f.write("angle_coeff    2        harmonic   62.0022 114.0\n")
+        f.write("angle_coeff    3        harmonic   33.6135 96.0\n")
+        f.write("dihedral_coeff 2 opls -0.20686795 0.0733675754 1.2175996962 0.0\n")
     return
 
 
@@ -46,10 +45,9 @@ class System(object):
     tolerance = 2.0
 
     def __init__(self,
+                 molecule: Molecule,
                  nmol: int,
                  box: (float, float, float),
-                 moltype,
-                 natompermol,
                  origin=(0.0, 0.0, 1.0),
                  normal=(0.0, 0.0, 1.0),
                  geom_type='planar'):
@@ -60,9 +58,8 @@ class System(object):
             nmol: No. of molecules
             origin: Box origin
             box: box dimensions
-            moltype: string name of alkane
-            natompermol: No. of atoms per molecule
             normal: vector normal to the planar geometry
+            molecule (Molecule): A molecule object to replicate in the system
         """
         self.force_field = 'TraPPE-UA'
         self.units = 'real'
@@ -76,30 +73,27 @@ class System(object):
         self.special_bonds = 'lj 0.0 0.0 0.0'  # any special 1-3 1-4 interactions
 
         assert (nmol < 10000)
-        assert (len(moltype) == 3 and isinstance(moltype, str))
-        assert (isinstance(natompermol, int))
 
         self.nmol = nmol
-        self.natompermol = natompermol
         self.origin = origin
         self.box = box
 
         self.geometry = self.gen_manifold(geom_type, normal)
-        self.molecules = self.gen_molecules(moltype, natompermol)
-        self.atoms = self.nmol * self.natompermol
+        self.molecules = self.gen_molecules(molecule)
+        self.natoms = self.nmol * molecule.natoms
 
-    def gen_manifold(self, type, normal):
+    def gen_manifold(self, gtype, normal):
         """Generate the manifold and seeds
 
         Args:
-            type: Type of manifold ('planar' or 'sphere')
+            gtype: Type of manifold ('planar' or 'sphere')
             normal: Direction of normal (in case of 'planar')
 
         Returns:
             None
         """
         geometry = None
-        if type == 'planar':
+        if gtype == 'planar':
             print("Generating a planar manifold")
             geometry = Planar(self.nmol, boxlen=self.box, normal=normal)
             print("Generating seeds")
@@ -107,21 +101,22 @@ class System(object):
             print("Done")
         return geometry
 
-    def gen_molecules(self, moltype, natompermol) -> List:
+    def gen_molecules(self, molecule: Molecule) -> List[Molecule]:
         """Generate 'nmol' molecules in the system and give them correct coordinates
 
         Args:
-            moltype: String defining the type of linear alkane molecule
-            natompermol: No. of atoms per molecule
+            molecule: A :class Molecule object to replicate
 
         Returns:
-            list of generated molecules
+            None
         """
-        molecules = [Molecule(moltype, natompermol) for _ in range(self.nmol)]
+        molecules = [copy.deepcopy(molecule) for _ in range(self.nmol)]
+
         if self.geometry is not None:
-            for i in range(self.nmol):
-                molecules[i].rotate_paxis(self.geometry.normal)
-                molecules[i].move_to_coords(self.geometry.seeds[i])
+            for idx in range(self.nmol):
+                molecules[idx].rotate_paxis(self.geometry.normal)
+                molecules[idx].move_to_coords(self.geometry.seeds[idx])
+                molecules[idx].set_indices(idx)
         else:
             print("Not implemented yet!")
             pass
@@ -148,9 +143,9 @@ class System(object):
         with open(folder + '/system.data', 'w') as f:
             f.write("LAMMPS Description\n")
             f.write("\n")
-            f.write("{:d}  atoms\n".format(self.natompermol * self.nmol))
-            f.write("{:d}  bonds\n".format(len(self.molecules[0].bond) * self.nmol))
-            f.write("{:d}  angles\n".format(0))
+            f.write("{:d}  atoms\n".format(self.natoms))
+            f.write("{:d}  bonds\n".format(self.molecules[0].nbonds * self.nmol))
+            f.write("{:d}  angles\n".format(self.molecules[0].nangles * self.nmol))
             f.write("{:d}  dihedrals\n".format(0))
             f.write("{:d}  impropers\n".format(0))
             f.write("\n")
@@ -168,19 +163,45 @@ class System(object):
             f.write("Masses\n\n")
             for itype, (atomtype, mass) in enumerate(Trappe['masses'].items()):
                 # f.write("{:d}  {:f} # {:s}\n".format(itype, mass, atomtype))
-                f.write("{:d}  {:f}\n".format(itype+1, mass, atomtype))
+                f.write("{:d}  {:f}\n".format(itype + 1, mass, atomtype))
             f.write("\n")
 
-            # Atom coordinates
+            # Atom data
             f.write("Atoms\n\n")
-            atom_count = 0
-            for imol, mol in enumerate(self.molecules):
-                for iatom in range(mol.natoms):
-                    atom_count += 1
-                    f.write("{:d} {:d} {:d} {:.3f} {:.5f} {:.5f} {:.5f}\n".format(atom_count, imol+1, 1, 0.0,
-                                                                                  mol.atom_coords[iatom, 0],
-                                                                                  mol.atom_coords[iatom, 1],
-                                                                                  mol.atom_coords[iatom, 2]))
+            for mol in self.molecules:
+                for atom in mol.atoms:
+                    f.write("{:d} {:d} {:d} {:.3f} {:.5f} {:.5f} {:.5f}\n".format(atom.index,
+                                                                                  mol.index,
+                                                                                  atom.type,
+                                                                                  0.0,
+                                                                                  atom.coords[0],
+                                                                                  atom.coords[1],
+                                                                                  atom.coords[2]))
+            f.write("\n")
+
+            # Bond data
+            f.write("Bonds\n\n")
+            for mol in self.molecules:
+                for bond in mol.bonds:
+                    f.write("{:d} {:d} {:d} {:d}\n".format(bond.index, bond.type, bond.atoms[0], bond.atoms[1]))
+            f.write("\n")
+
+            # Angles data
+            f.write("Angles\n\n")
+            for mol in self.molecules:
+                for angle in mol.angles:
+                    f.write("{:d} {:d} {:d} {:d}\n".format(angle.index, angle.type, angle.atoms[0], angle.atoms[1],
+                                                           angle.atoms[2]))
+            f.write("\n")
+
+            # Dihedrals data
+            f.write("Dihedrals\n\n")
+            for mol in self.molecules:
+                for dihedral in mol.dihedrals:
+                    f.write("{:d} {:d} {:d} {:d}\n".format(dihedral.index, dihedral.type, dihedral.atoms[0],
+                                                           dihedral.atoms[1],
+                                                           dihedral.atoms[2], dihedral.atoms[3]))
+            f.write("\n")
 
             # f.write('ITEM: TIMESTEP\n')
             # f.write('{:d}\n'.format(frame.configuration.step))
