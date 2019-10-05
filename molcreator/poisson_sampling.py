@@ -4,7 +4,8 @@
 
 import numpy as np
 
-class PoissonDisc():
+
+class PoissonDisc(object):
     """A class for generating two-dimensional Poisson (blue) noise)."""
 
     def __init__(self, width=50, height=50, r=1, k=50):

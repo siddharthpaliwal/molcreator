@@ -11,7 +11,7 @@ from scipy.spatial.transform import Rotation
 from molcreator.trappe import Trappe, AtomType, BondType, AngleType, DihedralType
 
 
-class Atom:
+class Atom(object):
     """Stores the information of each atom
 
     Attributes:
@@ -30,7 +30,7 @@ class Atom:
         self.index = index
 
 
-class Bond:
+class Bond(object):
     """Stores the information of each bond
 
     Attributes:
@@ -50,7 +50,7 @@ class Bond:
         self.index = 0
 
 
-class Angle:
+class Angle(object):
     """Stores the information of each angle
 
     Attributes:
@@ -65,7 +65,7 @@ class Angle:
         self.index = 0
 
 
-class Dihedral:
+class Dihedral(object):
     """Stores the information of each dihedral
 
     Attributes:
@@ -80,7 +80,7 @@ class Dihedral:
         self.index = 0
 
 
-class Molecule:
+class Molecule(object):
     R"""Defines the molecule class
 
     Used to instantiate molecule objects
@@ -127,8 +127,6 @@ class Molecule:
         self.paxis = (1.0, 0.0, 0.0)  # principal axis
         self.base_coords = (0.0, 0.0, 0.0)  # base point of the elongated molecule
         self.index = idx
-        # self.atom_coords = np.zeros((natoms, 3))
-        # self.atoms = [{'type':'', 'coords':[0.0, 0.0, 0.0]} for _ in range(natoms)]
         self.atoms = [Atom() for _ in range(self.natoms)]
         self.bonds = [Bond(b, b + 1) for b in range(self.nbonds)]
         self.angles = [Angle(a, a + 1, a + 2) for a in range(self.nangles)]
@@ -140,7 +138,8 @@ class Molecule:
         self.gen_bonds()
         self.gen_angles()
 
-    def from_molecule(self, template_mol, index):
+    @classmethod
+    def from_molecule(cls, template_mol, index):
         """Copy constructor
 
         Args:
@@ -151,7 +150,7 @@ class Molecule:
 
         """
         mol = copy.deepcopy(template_mol)
-        self.index = index
+        mol.set_indices(index)
         return mol
 
     def gen_coords(self):
@@ -163,26 +162,10 @@ class Molecule:
         bondlength = Trappe['bondlength']
         bondangle = Trappe['angles'][AngleType.BACKBONE]['theta0'] * pi / 180.
         # Assign coordinates
-        # for i, atom in enumerate(self.atoms[0::2]):
-        #     atom.coords[0] = i * bondlength * sin(bondangle / 2)
-        #     atom.coords[1] = 0.0
-        #     atom.coords[2] = 0.0
-        #     print([[atom.coords[0], atom.type] for atom in self.atoms])
-        #     # print([atom.type for atom in self.atoms])
-        # for i, atom in enumerate(self.atoms[1::2]):
-        #     atom.coords[0] = i * bondlength * sin(bondangle / 2)
-        #     atom.coords[1] = cos(bondangle / 2)
-        #     atom.coords[2] = 0.0
-        for atom in range(0, self.natoms, 2):
-            self.atoms[atom].coords[0] = atom * bondlength * sin(bondangle / 2)
-            self.atoms[atom].coords[1] = 0.0
-            self.atoms[atom].coords[2] = 0.0
-            # print([[atom.coords[0], atom.type] for atom in self.atoms])
-        for atom in range(1, self.natoms, 2):
-            self.atoms[atom].coords[0] = atom * bondlength * sin(bondangle / 2)
-            self.atoms[atom].coords[1] = cos(bondangle / 2)
-            self.atoms[atom].coords[2] = 0.0
-
+        for i, atom in enumerate(self.atoms):
+            atom.coords[0] = i * bondlength * sin(bondangle / 2)
+            atom.coords[1] = 0.0 if i % 2 == 0 else cos(bondangle / 2)
+            atom.coords[2] = 0.0
         return
 
     def gen_types(self):
@@ -190,62 +173,54 @@ class Molecule:
         Assign the types to each atom in the molecule
         """
         self.atoms[0].type = AtomType.CH3
-        for atom in range(1, self.natoms):
-            self.atoms[atom].type = AtomType.CH2
+        for atom in self.atoms[1:-1]:
+            atom.type = AtomType.CH2
         self.atoms[-1].type = AtomType.CH3
 
     def gen_bonds(self):
         """Assign the bonds and bond-type to the molecule
 
         """
-        for bond in range(0, self.nbonds):
-            self.bonds[bond].type = BondType.SAT
-            self.bonds[bond].atoms = (bond + 0, bond + 1)
+        for idx, bond in enumerate(self.bonds):
+            bond.type = BondType.SAT
+            bond.atoms = (idx + 0, idx + 1)
         return
 
     def gen_angles(self):
         """Assign the angles and angle-type to the molecule
 
         """
-        for angle in range(0, self.nangles):
-            self.angles[angle].type = AngleType.BACKBONE
-            self.angles[angle].atoms = (angle + 0, angle + 1, angle + 2)
+        for idx, angle in enumerate(self.angles):
+            angle.type = AngleType.BACKBONE
+            angle.atoms = (idx + 0, idx + 1, idx + 2)
 
     def gen_adihedrals(self):
         """Assign the dihedrals and dihedral-type to the molecule
 
         """
-        for dihedral in range(0, self.ndihedrals):
-            self.dihedrals[dihedral].type = DihedralType.BACKBONE
-            self.dihedrals[dihedral].atoms = (dihedral + 0, dihedral + 1, dihedral + 2, dihedral + 3)
+        for idx, dihedral in enumerate(self.dihedrals):
+            dihedral.type = DihedralType.BACKBONE
+            dihedral.atoms = (idx + 0, idx + 1, idx + 2, idx + 3)
 
-    def set_indices(self, molidx, atom_count):
+    def set_indices(self, molidx):
         """Set index of molecule and assign ID to members (atoms, bonds etc.) for LAMMPS config
 
         Parameters:
             molidx (int): Index of molecule
         """
         self.index = molidx
-        for idx in range(self.natoms):
-            self.atoms[idx].index = molidx * self.natoms + idx
-        # print([atom.index for atom in self.atoms])
-        for idx, atomi, atomj in zip(range(self.nbonds), self.atoms[:-1], self.atoms[1:]):
-            self.bonds[idx].index = molidx * self.nbonds + idx
-            self.bonds[idx].atoms = [atomi.index, atomj.index]
-        for idx, atomi, atomj, atomk in zip(range(self.nangles), self.atoms[:-2], self.atoms[1:-1], self.atoms[2:]):
-            self.angles[idx].index = molidx * self.nangles + idx
-            self.angles[idx].atoms = [atomi.index, atomj.index, atomk.index]
-        for idx, atomi, atomj, atomk, atoml in zip(range(self.nangles), self.atoms[:-3], self.atoms[1:-2], self.atoms[2:-1], self.atoms[3:]):
-            self.dihedrals[idx].index = molidx * self.ndihedrals + idx
-            self.dihedrals[idx].atoms = [atomi.index, atomj.index, atomk.index, atoml.index]
-        # print([bond.atoms for bond in self.bonds])
-        # for idx, angle in enumerate(self.angles):
-        #     angle.index = molidx * self.nangles + idx
-        # for idx in range(self.nangles):
-        #     self.angles[idx].index = molidx * self.nangles + idx
-        # for idx in range(self.ndihedrals):
-        #     self.dihedrals[idx].index = molidx * self.ndihedrals + idx
-
+        for idx, atom in enumerate(self.atoms):
+            atom.index = molidx * self.natoms + idx
+        for idx, bond in enumerate(self.bonds):
+            bond.index = molidx * self.nbonds + idx
+            bond.atoms = [self.atoms[idx].index, self.atoms[idx+1].index]
+        for idx, angle in enumerate(self.angles):
+            angle.index = molidx * self.nangles + idx
+            angle.atoms = [self.atoms[idx].index, self.atoms[idx+1].index, self.atoms[idx+2].index]
+        for idx, dihedral in enumerate(self.dihedrals):
+            dihedral.index = molidx * self.ndihedrals + idx
+            dihedral.atoms = [self.atoms[idx].index, self.atoms[idx+1].index, self.atoms[idx+2].index,
+                              self.atoms[idx+3].index]
         return
 
     def print_coords(self):
@@ -253,11 +228,11 @@ class Molecule:
         Print the coordinates of atoms in the molecule for debugging
         :return: None
         """
-        for atom in range(self.natoms):
-            print('Atom:{:d} Type:{:d} {:.3f} {:.3f} {:.3f}'.format(atom, self.atoms[atom].type,
-                                                                    self.atoms[atom].coords[0],
-                                                                    self.atoms[atom].coords[1],
-                                                                    self.atoms[atom].coords[2]))
+        for atom in self.atoms:
+            print('Atom:{:d} Type:{:d} {:.3f} {:.3f} {:.3f}'.format(atom, atom.type,
+                                                                    atom.coords[0],
+                                                                    atom.coords[1],
+                                                                    atom.coords[2]))
 
     def translate(self, delta: (float, float, float)):
         """Translate the molecule by given distance in x,y,z directions
@@ -268,8 +243,8 @@ class Molecule:
         Returns:
             None
         """
-        for atom in range(self.natoms):
-            self.atoms[atom].coords += delta
+        for atom in self.atoms:
+            atom.coords += delta
         return
 
     def move_to_coords(self, pos: (float, float, float)) -> None:
@@ -281,13 +256,6 @@ class Molecule:
         self.translate(np.asarray(pos) - np.asarray(self.base_coords))
         self.base_coords = pos
         return
-
-    # def check_overlap(self, rtest: (float, float, float)):
-    #     for i in range(self.nmol):
-    #         dr = np.sum((rtest - self.atom_coords[i])**2)**0.5
-    #         if(dr<self.tolerance):
-    #             return True
-    #     return False
 
     def get_distance(self, moltest):
         """Calculate the min. distance between any two atoms of self from moltest
@@ -311,7 +279,7 @@ class Molecule:
         if norm > 0.0:
             nvec = nvec / norm  # normalize
         r = Rotation.from_rotvec(theta * nvec)  # get the rotation matrix
-        for atom in range(self.natoms):
-            self.atoms[atom].coords = r.apply(self.atoms[atom].coords)  # apply rot to each atom
+        for atom in self.atoms:
+            atom.coords = r.apply(atom.coords)  # apply rot to each atom
         self.paxis = axis
         return
