@@ -1,25 +1,25 @@
 import numpy as np
 import scipy.spatial.distance as spdist
 import time
+import copy
+from molcreator.poisson_sampling import PoissonDisc
 
 
 class Geometry:
+    """Define of some common geometrical manifolds for arranging molecules
     """
-    Define of some common geometrical manifolds for arranging molecules
-    """
-    box = np.zeros((3, 2))  # [ [xlo,xhi], [ylo,yhi], [zlo,zhi] ]
 
     def __init__(self,
-                 origin: (float, float, float) = (0.0, 0.0, 0.0),
-                 boxlen: (float, float, float) = (1.0, 1.0, 1.0)):
+                 origin: [float, float, float] = (0.0, 0.0, 0.0),
+                 boxlen: [float, float, float] = (1.0, 1.0, 1.0)):
         """Initialize a geometric manifold at specified origin
 
         Args:
             origin: Origin of the geometric manifold, default (0, 0, 0)
             boxlen: Box length in each dimension, default (1.0, 1.0, 1.0)
         """
-        self.origin = origin
-        self.boxlen = boxlen
+        self.origin = copy.copy(origin)
+        self.boxlen = copy.copy(boxlen)
 
 
 class Planar(Geometry):
@@ -39,9 +39,9 @@ class Planar(Geometry):
 
     def __init__(self,
                  npts,
-                 origin: (float, float, float) = (0.0, 0.0, 0.0),
-                 boxlen: (float, float, float) = (1.0, 1.0, 1.0),
-                 normal: (float, float, float) = (0.0, 0.0, 1.0)):
+                 origin: [float, float, float] = (0.0, 0.0, 0.0),
+                 boxlen: [float, float, float] = (1.0, 1.0, 1.0),
+                 normal: [float, float, float] = (0.0, 0.0, 1.0)):
         """Define a planar manifold containing npts points
 
         Args:
@@ -87,7 +87,42 @@ class Planar(Geometry):
         print('Generated {:d} seeds in {:.3f} sec.'.format(_nassigned, (end - start)))
         # [print(seed) for seed in self.seeds]
 
+    def generate_seeds_poisson(self, tol=1.0):
+        npts = len(self.seeds)
+        pdisc = PoissonDisc(self.boxlen[0], self.boxlen[1], r=tol)
+        start = time.time()
+        coords = np.asarray(pdisc.sample())
+        end = time.time()
+        print(np.shape(coords))
+        print('Generated {:d} seeds in {:.3f} sec.'.format(len(coords), (end - start)))
+        if len(coords) >= npts:
+            pts = np.random.randint(0, len(coords), npts)
+            self.seeds = np.column_stack((coords[pts], np.zeros(npts)))
+        else:
+            print('Couldnt generate {:d} coords. Reduce tol value'.format(npts))
+            self.seeds = np.zeros((npts, 3))
+
+    def generate_seeds_square(self, tol=1.0):
+        npts = len(self.seeds)
+        start = time.time()
+        nx = ny = np.ceil(np.sqrt(npts))
+        xlist = ylist = np.linspace(self.origin[0], self.boxlen[0], nx, endpoint=False)
+        xcoords, ycoords = np.meshgrid(xlist, ylist)
+        end = time.time()
+        ngen = np.size(xcoords)
+        # print(np.shape(xcoords), xcoords[:10])
+        print('Generated {:d} seeds in {:.3f} sec.'.format(np.size(xcoords), (end - start)))
+        if ngen > npts:
+            pts = np.random.randint(0, ngen, npts)
+            self.seeds = np.column_stack((np.reshape(xcoords,(ngen, 1))[pts], np.reshape(ycoords,(ngen, 1))[pts], np.zeros(npts)))
+        elif ngen == npts:
+            self.seeds = np.column_stack((np.reshape(xcoords, (ngen, 1)), np.reshape(ycoords, (ngen, 1)), np.zeros(npts)))
+        else:
+            print('Couldnt generate {:d} coords. Reduce tol value'.format(npts))
+            self.seeds = np.zeros((npts, 3))
+
 
 if __name__ == '__main__':
-    plane = Planar(10000, boxlen=[5.0, 5.0, 5.0])
-    plane.generate_seeds(0.1)
+    plane = Planar(100, boxlen=[5.0, 5.0, 5.0])
+    # plane.generate_seeds(0.1)
+    plane.generate_seeds_poisson(0.4)
