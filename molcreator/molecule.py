@@ -6,6 +6,7 @@ for a linear chain alkane.
 
 import numpy as np
 from math import sin, cos, pi
+import copy
 from scipy.spatial.transform import Rotation
 from molcreator.trappe import Trappe, AtomType, BondType, AngleType, DihedralType
 
@@ -14,34 +15,38 @@ class Atom:
     """Stores the information of each atom
 
     Attributes:
-        type (:class AtomType): Type of Atom
+        type (:class:`molcreator.trappe.AtomType`): Type of Atom
         coords (float, float, float): coordinates of the atom
         index (int): index
     """
+    _atom_count = 0
 
-    def __init__(self, coords=[0.0, 0.0, 0.0], atype=AtomType.CH2):
+    def __init__(self, coords=None, atype=AtomType.CH2, index: int = 0):
+        if coords is None:
+            coords = [0.0, 0.0, 0.0]
+        Atom._atom_count += 1
         self.type = AtomType(atype)
         self.coords = coords
-        self.index = 0
+        self.index = index
 
 
 class Bond:
     """Stores the information of each bond
 
     Attributes:
-        type (:class BondType): Type of Bond
+        type (:class:`molcreator.trappe.BondType`): Type of Bond
         atoms (int, int): tuple of 2 consecutive atoms connected by the bond
         index (int): index
     """
 
-    def __init__(self, atomi: int, atomj: int, btype=BondType.SAT):
+    def __init__(self, atomi: int, atomj: int, btype: BondType = BondType.SAT):
         """
 
         Args:
             btype (object): BondType Enum
         """
         self.type = BondType(btype)
-        self.atoms = (atomi, atomj)
+        self.atoms = [atomi, atomj]
         self.index = 0
 
 
@@ -49,14 +54,14 @@ class Angle:
     """Stores the information of each angle
 
     Attributes:
-        type: Type of Angle
+        type (:class:`molcreator.trappe.AngleType`): Type of Angle
         atoms (int, int, int): tuple of 3 consecutive atoms forming the angle
         index (int): index
     """
 
     def __init__(self, atomi: int, atomj: int, atomk: int, atype=AngleType.BACKBONE):
         self.type = AngleType(atype)
-        self.atoms = (atomi, atomj, atomk)
+        self.atoms = [atomi, atomj, atomk]
         self.index = 0
 
 
@@ -64,20 +69,23 @@ class Dihedral:
     """Stores the information of each dihedral
 
     Attributes:
-        type: Type of Dihedral angle
+        type (:class:`molcreator.trappe.DihedralType`): Type of Dihedral angle
         atoms (int, int, int, int): tuple of 4 consecutive atoms forming the dihedral angle
         index (int): index
     """
 
     def __init__(self, atomi: int, atomj: int, atomk: int, atoml: int, atype=DihedralType.BACKBONE):
         self.type = DihedralType(atype)
-        self.atoms = (atomi, atomj, atomk, atoml)
+        self.atoms = [atomi, atomj, atomk, atoml]
         self.index = 0
 
 
 class Molecule:
-    R"""Defines the molecule class used to instantiate a molecule objects
+    R"""Defines the molecule class
+
+    Used to instantiate molecule objects
     that could be modified in space and arranged in the desired manner
+    specified by a geometrical manifold
 
     Args:
         name (string): Chemical/Ref. name of the molecule
@@ -85,15 +93,16 @@ class Molecule:
         nbonds (integer): No. of beads in the molecule representation
         nangles (integer): No. of beads in the molecule representation
         ndihedrals (integer): No. of beads in the molecule representation
+        idx (integer): Index number of the molecule (optional)
 
     Attributes:
         base_coords: coordinates of the base
         paxis: principle axis unit vector in 3D
         index: index number of the molecule
-        atoms (list): list of :class: Atom objects
-        bonds (list): list of :class: Bond objects
-        angles (list): list of :class: Angle objects
-        dihedrals (list): list of :class: Dihedral objects
+        atoms (list): list of :class:`~.Atom` objects
+        bonds (list): list of :class:`~.Bond` objects
+        angles (list): list of :class:`~.Angle` objects
+        dihedrals (list): list of :class:`~.Dihedral` objects
     """
 
     def __init__(self,
@@ -121,15 +130,29 @@ class Molecule:
         # self.atom_coords = np.zeros((natoms, 3))
         # self.atoms = [{'type':'', 'coords':[0.0, 0.0, 0.0]} for _ in range(natoms)]
         self.atoms = [Atom() for _ in range(self.natoms)]
-        self.bonds = [Bond(b, b+1) for b in range(self.nbonds)]
-        self.angles = [Angle(a, a+1, a+2) for a in range(self.nangles)]
-        self.dihedrals = [Dihedral(d, d+1, d+2, d+3) for d in range(self.ndihedrals)]
+        self.bonds = [Bond(b, b + 1) for b in range(self.nbonds)]
+        self.angles = [Angle(a, a + 1, a + 2) for a in range(self.nangles)]
+        self.dihedrals = [Dihedral(d, d + 1, d + 2, d + 3) for d in range(self.ndihedrals)]
 
         # Call the initialization functions
-        self.gen_coords()
         self.gen_types()
+        self.gen_coords()
         self.gen_bonds()
         self.gen_angles()
+
+    def from_molecule(self, template_mol, index):
+        """Copy constructor
+
+        Args:
+            template_mol: Template molecule to copy
+            index: current molecule index
+
+        Returns:
+
+        """
+        mol = copy.deepcopy(template_mol)
+        self.index = index
+        return mol
 
     def gen_coords(self):
         """Generate the coordinates of atoms in the molecule
@@ -140,10 +163,21 @@ class Molecule:
         bondlength = Trappe['bondlength']
         bondangle = Trappe['angles'][AngleType.BACKBONE]['theta0'] * pi / 180.
         # Assign coordinates
+        # for i, atom in enumerate(self.atoms[0::2]):
+        #     atom.coords[0] = i * bondlength * sin(bondangle / 2)
+        #     atom.coords[1] = 0.0
+        #     atom.coords[2] = 0.0
+        #     print([[atom.coords[0], atom.type] for atom in self.atoms])
+        #     # print([atom.type for atom in self.atoms])
+        # for i, atom in enumerate(self.atoms[1::2]):
+        #     atom.coords[0] = i * bondlength * sin(bondangle / 2)
+        #     atom.coords[1] = cos(bondangle / 2)
+        #     atom.coords[2] = 0.0
         for atom in range(0, self.natoms, 2):
             self.atoms[atom].coords[0] = atom * bondlength * sin(bondangle / 2)
             self.atoms[atom].coords[1] = 0.0
             self.atoms[atom].coords[2] = 0.0
+            # print([[atom.coords[0], atom.type] for atom in self.atoms])
         for atom in range(1, self.natoms, 2):
             self.atoms[atom].coords[0] = atom * bondlength * sin(bondangle / 2)
             self.atoms[atom].coords[1] = cos(bondangle / 2)
@@ -185,7 +219,7 @@ class Molecule:
             self.dihedrals[dihedral].type = DihedralType.BACKBONE
             self.dihedrals[dihedral].atoms = (dihedral + 0, dihedral + 1, dihedral + 2, dihedral + 3)
 
-    def set_indices(self, molidx):
+    def set_indices(self, molidx, atom_count):
         """Set index of molecule and assign ID to members (atoms, bonds etc.) for LAMMPS config
 
         Parameters:
@@ -194,12 +228,23 @@ class Molecule:
         self.index = molidx
         for idx in range(self.natoms):
             self.atoms[idx].index = molidx * self.natoms + idx
-        for idx in range(self.nbonds):
+        # print([atom.index for atom in self.atoms])
+        for idx, atomi, atomj in zip(range(self.nbonds), self.atoms[:-1], self.atoms[1:]):
             self.bonds[idx].index = molidx * self.nbonds + idx
-        for idx in range(self.nangles):
+            self.bonds[idx].atoms = [atomi.index, atomj.index]
+        for idx, atomi, atomj, atomk in zip(range(self.nangles), self.atoms[:-2], self.atoms[1:-1], self.atoms[2:]):
             self.angles[idx].index = molidx * self.nangles + idx
-        for idx in range(self.ndihedrals):
+            self.angles[idx].atoms = [atomi.index, atomj.index, atomk.index]
+        for idx, atomi, atomj, atomk, atoml in zip(range(self.nangles), self.atoms[:-3], self.atoms[1:-2], self.atoms[2:-1], self.atoms[3:]):
             self.dihedrals[idx].index = molidx * self.ndihedrals + idx
+            self.dihedrals[idx].atoms = [atomi.index, atomj.index, atomk.index, atoml.index]
+        # print([bond.atoms for bond in self.bonds])
+        # for idx, angle in enumerate(self.angles):
+        #     angle.index = molidx * self.nangles + idx
+        # for idx in range(self.nangles):
+        #     self.angles[idx].index = molidx * self.nangles + idx
+        # for idx in range(self.ndihedrals):
+        #     self.dihedrals[idx].index = molidx * self.ndihedrals + idx
 
         return
 
@@ -209,25 +254,31 @@ class Molecule:
         :return: None
         """
         for atom in range(self.natoms):
-            print('Atom:{:d} Type:{:s} {:.3f} {:.3f} {:.3f}'.format(atom, self.atoms[atom].type,
+            print('Atom:{:d} Type:{:d} {:.3f} {:.3f} {:.3f}'.format(atom, self.atoms[atom].type,
                                                                     self.atoms[atom].coords[0],
                                                                     self.atoms[atom].coords[1],
                                                                     self.atoms[atom].coords[2]))
 
     def translate(self, delta: (float, float, float)):
-        """
-        Translate the molecule by given distance in x,y,z directions
-        :return: A copy of the translated coordinates
+        """Translate the molecule by given distance in x,y,z directions
+
+        Args:
+            delta (float, float, float): displacement in 3D
+
+        Returns:
+            None
         """
         for atom in range(self.natoms):
             self.atoms[atom].coords += delta
         return
 
     def move_to_coords(self, pos: (float, float, float)) -> None:
+        """Move the molecule to the given position
+
+        Args:
+            pos (float, float, float): Target position of the base of the molecule
         """
-        Move the molecule to the given position
-        """
-        self.translate(pos - self.base_coords)
+        self.translate(np.asarray(pos) - np.asarray(self.base_coords))
         self.base_coords = pos
         return
 
@@ -239,20 +290,20 @@ class Molecule:
     #     return False
 
     def get_distance(self, moltest):
-        """
-        Calculate the min. distance between any two atoms of self from moltest
+        """Calculate the min. distance between any two atoms of self from moltest
         """
         return
 
     def check_overlap(self, ri, rj):
-        """
-        Check if the two molecules overlap
+        """Check if the two molecules overlap
         """
         return True
 
     def rotate_paxis(self, axis) -> None:
-        """
-        rotate the molecule such that the principle axis is now pointing in 'axis' direction
+        """rotate the molecule such that the principle axis is now pointing in 'axis' direction
+
+        Args:
+            axis (float, float, float): Vector where the :class:`~.Molecule.paxis` should point to
         """
         nvec = np.cross(self.paxis, axis)  # normal vector to current and target axis
         theta = np.arcsin(np.linalg.norm(nvec))  # angle between current and target axis

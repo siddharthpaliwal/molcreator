@@ -48,7 +48,7 @@ class System(object):
                  molecule: Molecule,
                  nmol: int,
                  box: (float, float, float),
-                 origin=(0.0, 0.0, 1.0),
+                 origin=(0.0, 0.0, 0.0),
                  normal=(0.0, 0.0, 1.0),
                  geom_type='planar'):
         """Create a system with particles allocated on the manifold
@@ -78,11 +78,11 @@ class System(object):
         self.origin = origin
         self.box = box
 
-        self.geometry = self.gen_manifold(geom_type, normal)
-        self.molecules = self.gen_molecules(molecule)
+        self.geometry = None
+        self.molecules = None
         self.natoms = self.nmol * molecule.natoms
 
-    def gen_manifold(self, gtype, normal):
+    def gen_manifold(self, gtype, normal, tol):
         """Generate the manifold and seeds
 
         Args:
@@ -97,9 +97,12 @@ class System(object):
             print("Generating a planar manifold")
             geometry = Planar(self.nmol, boxlen=self.box, normal=normal)
             print("Generating seeds")
-            geometry.generate_seeds()
+            # geometry.generate_seeds()
+            # geometry.generate_seeds_poisson(tol=tol)
+            geometry.generate_seeds_square()
             print("Done")
-        return geometry
+        self.geometry = geometry
+        return
 
     def gen_molecules(self, molecule: Molecule) -> List[Molecule]:
         """Generate 'nmol' molecules in the system and give them correct coordinates
@@ -113,10 +116,12 @@ class System(object):
         molecules = [copy.deepcopy(molecule) for _ in range(self.nmol)]
 
         if self.geometry is not None:
-            for idx in range(self.nmol):
-                molecules[idx].rotate_paxis(self.geometry.normal)
-                molecules[idx].move_to_coords(self.geometry.seeds[idx])
-                molecules[idx].set_indices(idx)
+            atom_count = 0
+            for molidx in range(self.nmol):
+                atom_count += molecules[0].natoms
+                molecules[molidx].rotate_paxis(self.geometry.normal)
+                molecules[molidx].move_to_coords(self.geometry.seeds[molidx])
+                molecules[molidx].set_indices(molidx, atom_count)
         else:
             print("Not implemented yet!")
             pass
@@ -128,7 +133,8 @@ class System(object):
             #         for j in range(i):
             #             test = Molecule.check_overlap(rtest, self.coords[j])
             #     molecules[i].set_base_coords(rtest)
-        return molecules
+        self.molecules = molecules
+        return
 
     def write_coords_lmp(self, path: str) -> None:
         """Write the generated atom coordinates to a LAMMPS data file
@@ -146,13 +152,13 @@ class System(object):
             f.write("{:d}  atoms\n".format(self.natoms))
             f.write("{:d}  bonds\n".format(self.molecules[0].nbonds * self.nmol))
             f.write("{:d}  angles\n".format(self.molecules[0].nangles * self.nmol))
-            f.write("{:d}  dihedrals\n".format(0))
+            f.write("{:d}  dihedrals\n".format(self.molecules[0].ndihedrals * self.nmol))
             f.write("{:d}  impropers\n".format(0))
             f.write("\n")
             f.write("{:d}  atom types\n".format(len(Trappe['masses'])))
             f.write("{:d}  bond types\n".format(1))
-            f.write("{:d}  angle types\n".format(0))
-            f.write("{:d}  dihedral types\n".format(0))
+            f.write("{:d}  angle types\n".format(1))
+            f.write("{:d}  dihedral types\n".format(1))
             f.write("\n")
             f.write("{:.5f} {:.5f} xlo xhi\n".format(self.origin[0], self.box[0] + self.origin[0]))
             f.write("{:.5f} {:.5f} ylo yhi\n".format(self.origin[1], self.box[1] + self.origin[1]))
@@ -170,37 +176,30 @@ class System(object):
             f.write("Atoms\n\n")
             for mol in self.molecules:
                 for atom in mol.atoms:
-                    f.write("{:d} {:d} {:d} {:.3f} {:.5f} {:.5f} {:.5f}\n".format(atom.index,
-                                                                                  mol.index,
-                                                                                  atom.type,
-                                                                                  0.0,
-                                                                                  atom.coords[0],
-                                                                                  atom.coords[1],
-                                                                                  atom.coords[2]))
+                    f.write(f'{atom.index + 1:d} {mol.index + 1:d} {atom.type:d} {0.0:.3f} {atom.coords[0]:.5f} {atom.coords[1]:.5f} {atom.coords[2]:.5f}\n')
             f.write("\n")
 
             # Bond data
             f.write("Bonds\n\n")
             for mol in self.molecules:
                 for bond in mol.bonds:
-                    f.write("{:d} {:d} {:d} {:d}\n".format(bond.index, bond.type, bond.atoms[0], bond.atoms[1]))
+                    f.write(f'{bond.index + 1:d} {bond.type:d} {bond.atoms[0] + 1:d} {bond.atoms[1] + 1:d}\n')
             f.write("\n")
 
             # Angles data
             f.write("Angles\n\n")
             for mol in self.molecules:
                 for angle in mol.angles:
-                    f.write("{:d} {:d} {:d} {:d}\n".format(angle.index, angle.type, angle.atoms[0], angle.atoms[1],
-                                                           angle.atoms[2]))
+                    f.write(
+                        f'{angle.index+1:d} {angle.type:d} {angle.atoms[0]+1:d} {angle.atoms[1]+1:d} {angle.atoms[2]+1:d}\n')
             f.write("\n")
 
             # Dihedrals data
             f.write("Dihedrals\n\n")
             for mol in self.molecules:
                 for dihedral in mol.dihedrals:
-                    f.write("{:d} {:d} {:d} {:d}\n".format(dihedral.index, dihedral.type, dihedral.atoms[0],
-                                                           dihedral.atoms[1],
-                                                           dihedral.atoms[2], dihedral.atoms[3]))
+                    f.write(
+                        f'{dihedral.index+1:d} {dihedral.type:d} {dihedral.atoms[0]+1:d} {dihedral.atoms[1]+1:d} {dihedral.atoms[2]+1:d} {dihedral.atoms[3]+1:d}\n')
             f.write("\n")
 
             # f.write('ITEM: TIMESTEP\n')

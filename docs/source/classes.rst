@@ -6,3 +6,4 @@ Classes
     molecule
     geometry
     system
+    trappe
